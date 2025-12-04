@@ -31,6 +31,14 @@ public struct UDPState
 }
 
 public class PicoCommunicator : MonoBehaviour {
+    [Header("Network Settings")]
+    [Tooltip("NDK Server IP Address")]
+    public string serverIP = "192.168.70.150";
+    [Tooltip("Port to send data to server")]
+    public int serverPort = 2424;
+    [Tooltip("Port to listen for incoming commands")]
+    public int listenPort = 4242;
+
     private VideoManager videoManager;
 
     private bool startMovie = false;
@@ -60,21 +68,26 @@ public class PicoCommunicator : MonoBehaviour {
         Application.runInBackground = true;
         videoManager = GetComponent<VideoManager>();
 
+        Debug.Log("[NDK] Application starting...");
+        Debug.Log("[NDK] Platform: " + Application.platform);
+        Debug.Log("[NDK] Persistent Data Path: " + Application.persistentDataPath);
+
         // DEBUG: Ses kaynağı oluştur (bip sesi için)
         debugAudioSource = gameObject.AddComponent<AudioSource>();
         debugAudioSource.playOnAwake = false;
 
         try
         {
-            udpClient = new UdpClient(4242);
-            ipEndPoint = new IPEndPoint(IPAddress.Parse("192.168.70.150"), 4242);
+            udpClient = new UdpClient(listenPort);
+            ipEndPoint = new IPEndPoint(IPAddress.Parse(serverIP), listenPort);
             udpState = new UDPState(udpClient, ipEndPoint);
             udpClient.BeginReceive(new AsyncCallback(DataReceived), udpState);
-            Debug.Log("NDK-Cinema-Client is waiting for packages on port 4242");
+            Debug.Log("[NDK] UDP Client started - Listening on port " + listenPort);
+            Debug.Log("[NDK] Target server: " + serverIP + ":" + serverPort);
         }
         catch (Exception exception)
         {
-            Debug.Log("UDP ERROR: " + exception.ToString());
+            Debug.Log("[NDK ERROR] UDP initialization failed: " + exception.ToString());
         }
         IPHostEntry ipHostEntry = Dns.GetHostEntry(Dns.GetHostName());
         foreach (IPAddress tempIPAddress in ipHostEntry.AddressList)
@@ -82,6 +95,7 @@ public class PicoCommunicator : MonoBehaviour {
             if (tempIPAddress.AddressFamily == AddressFamily.InterNetwork)
             {
                 ipAddress = tempIPAddress.ToString();
+                Debug.Log("[NDK] Local IP: " + ipAddress);
                 break;
             }
         }
@@ -251,11 +265,12 @@ public class PicoCommunicator : MonoBehaviour {
         try
         {
             byte[] byteArray = Encoding.ASCII.GetBytes(dataString);
-            udpClient.Send(byteArray, byteArray.Length, "192.168.70.150", 2424);
+            udpClient.Send(byteArray, byteArray.Length, serverIP, serverPort);
+            Debug.Log("[NDK] UDP SENT: " + dataString + " to " + serverIP + ":" + serverPort);
         }
         catch (Exception exception)
         {
-            Debug.Log(exception.ToString());
+            Debug.Log("[NDK ERROR] UDP Send failed: " + exception.ToString());
         }
     }
 
